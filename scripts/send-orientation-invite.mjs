@@ -1,6 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const nodemailer = require('nodemailer');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
+
+// Helper to get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 1. Manually parse .env.local to load SMTP settings
 const envPath = path.join(__dirname, '../.env.local');
@@ -64,8 +69,8 @@ const testEmail = process.argv[3] ? process.argv[3].trim() : null;
 
 if (!arg1) {
     console.log("Usage:");
-    console.log("  node scripts/send-orientation-invite.js test <recipient-email>      - Send a test email to a specific address");
-    console.log("  node scripts/send-orientation-invite.js send-all                   - Send emails to all 19 students");
+    console.log("  node scripts/send-orientation-invite.mjs test <recipient-email>      - Send a test email to a specific address");
+    console.log("  node scripts/send-orientation-invite.mjs send-all                   - Send emails to all 19 students");
     process.exit(0);
 }
 
@@ -73,7 +78,7 @@ let targets = [];
 if (arg1 === 'test') {
     if (!testEmail) {
         console.error("Error: Please provide a recipient email address for testing.");
-        console.error("Example: node scripts/send-orientation-invite.js test yourname@gmail.com");
+        console.error("Example: node scripts/send-orientation-invite.mjs test yourname@gmail.com");
         process.exit(1);
     }
     targets = [{ name: "Test User", email: testEmail }];

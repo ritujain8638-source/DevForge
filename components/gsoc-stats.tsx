@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Github, ExternalLink, GitMerge, GitPullRequest, XCircle, Star, TrendingUp, PieChart as PieChartIcon, BarChart3 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useSearchParams } from "next/navigation";
 import { DataState } from "@/components/ui/empty-state";
@@ -340,7 +340,7 @@ export function GsocStats() {
                                             <h3 className="text-2xl font-bold text-white">{member.name}</h3>
                                             <a
                                                 href={`https://github.com/${member.github}`}
-                                                target="_blank"
+                                                target="_blank" rel="noopener noreferrer"
                                                 className="text-cyan-300 hover:text-cyan-200 flex items-center gap-1"
                                             >
                                                 <Github className="w-4 h-4" />
@@ -386,7 +386,7 @@ export function GsocStats() {
                                             <div className="flex items-center justify-between mb-3">
                                                 <a
                                                     href={`https://github.com/${org.org}`}
-                                                    target="_blank"
+                                                    target="_blank" rel="noopener noreferrer"
                                                     className="text-xl font-semibold text-white hover:text-cyan-400 flex items-center gap-2"
                                                 >
                                                     <img
@@ -410,7 +410,7 @@ export function GsocStats() {
                                                     <a
                                                         key={pr.url}
                                                         href={pr.url}
-                                                        target="_blank"
+                                                        target="_blank" rel="noopener noreferrer"
                                                         className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
                                                     >
                                                         {pr.state === 'merged' && <GitMerge className="w-4 h-4 text-purple-500 flex-shrink-0" />}
@@ -455,7 +455,7 @@ export function GsocStats() {
                             <motion.a
                                 key={pr.url}
                                 href={pr.url}
-                                target="_blank"
+                                target="_blank" rel="noopener noreferrer"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.4 + i * 0.03 }}

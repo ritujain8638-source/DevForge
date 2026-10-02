@@ -62,11 +62,11 @@ export default function EventsCalendar() {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2>
               <div className="flex gap-2">
-                <button onClick={prevMonth} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors">
-                  <ChevronLeft size={20} />
+                <button onClick={prevMonth} aria-label="Previous month" className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors">
+                  <ChevronLeft aria-hidden="true" size={20} />
                 </button>
-                <button onClick={nextMonth} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors">
-                  <ChevronRight size={20} />
+                <button onClick={nextMonth} aria-label="Next month" className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors">
+                  <ChevronRight aria-hidden="true" size={20} />
                 </button>
               </div>
             </div>

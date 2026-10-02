@@ -1,31 +1,80 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "devforge-learn-progress";
 
-export function useLearnProgress() {
-    const [done, setDone] = useState<Set<string>>(new Set());
-    const [hydrated, setHydrated] = useState(false);
+const EMPTY = new Set<string>();
 
-    useEffect(() => {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) setDone(new Set(JSON.parse(raw)));
-        } catch {
-            // ignore malformed storage
+let snapshot: Set<string> | undefined;
+const listeners = new Set<() => void>();
+
+function readSnapshot() {
+    if (typeof window === "undefined") {
+        return EMPTY;
+    }
+
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        snapshot = raw ? new Set(JSON.parse(raw)) : EMPTY;
+    } catch {
+        snapshot = EMPTY;
+    }
+
+    return snapshot;
+}
+
+function subscribe(listener: () => void) {
+    listeners.add(listener);
+
+    const handleStorage = (event: StorageEvent) => {
+        if (event.key === STORAGE_KEY) {
+            readSnapshot();
+            listeners.forEach((listener) => listener());
         }
-        setHydrated(true);
-    }, []);
+    };
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+        listeners.delete(listener);
+        window.removeEventListener("storage", handleStorage);
+    };
+}
+
+const getSnapshot = () => snapshot ?? readSnapshot();
+const getServerSnapshot = () => EMPTY;
+
+export function useLearnProgress() {
+    const done = useSyncExternalStore(
+        subscribe,
+        getSnapshot,
+        getServerSnapshot
+    );
+
+    const hydrated = useSyncExternalStore(
+        subscribe,
+        () => true,
+        () => false
+    );
 
     const toggle = (nodeId: string) => {
-        setDone((prev) => {
-            const next = new Set(prev);
-            if (next.has(nodeId)) next.delete(nodeId);
-            else next.add(nodeId);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next)));
-            return next;
-        });
+        const next = new Set(done);
+
+        if (next.has(nodeId)) {
+            next.delete(nodeId);
+        } else {
+            next.add(nodeId);
+        }
+
+        snapshot = next;
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(Array.from(next))
+        );
+
+        listeners.forEach((listener) => listener());
     };
 
     return { done, toggle, hydrated };

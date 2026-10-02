@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -22,7 +22,7 @@ import {
     ShieldCheck,
 } from "lucide-react";
 import { milestones, reflectionTemplate, rules, workbookMeta, ARENA_LABELS, type Arena } from "@/data/pr-workbook";
-import type { JourneyEntry, JourneyRecord, PRState } from "@/lib/pr-journey";
+import { isMilestoneUnlocked, type JourneyEntry, type JourneyRecord, type PRState } from "@/lib/pr-journey";
 import type { GithubIdentity } from "@/lib/github-auth";
 
 const SIGN_IN_HREF = "/api/auth/github?next=/learn/open-source";
@@ -134,7 +134,7 @@ export function PRWorkbook() {
      * milestone opens only once the one before it is signed off. Nobody jumps
      * to a feature PR in a stranger's repo in week one.
      */
-    const isUnlocked = (n: number) => n === 1 || entryFor(n - 1)?.state === "signed-off";
+    const isUnlocked = (n: number) => isMilestoneUnlocked(entries, n);
 
     async function submit(n: number) {
         setBusy(true);
@@ -433,7 +433,7 @@ export function PRWorkbook() {
                                                         {entry.evidence.state}
                                                     </span>
                                                     <span className="text-[11px] text-neutral-500 font-mono">
-                                                        {entry.evidence.reviewRounds} review rounds
+                                                        {entry.evidence.reviewRounds} review {entry.evidence.reviewRounds === 1 ? "round" : "rounds"}
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-neutral-400 mb-2 truncate">{entry.evidence.title}</p>
@@ -483,7 +483,9 @@ export function PRWorkbook() {
                                             <div className="mt-3">
                                                 {!unlocked ? (
                                                     <p className="text-xs text-neutral-600">
-                                                        Opens when milestone {m.n - 1} is signed off.
+                                                        {entryFor(m.n - 1)?.state === "changes-requested"
+                                                            ? `Opens when you fix and resubmit milestone ${m.n - 1}.`
+                                                            : `Opens when you submit milestone ${m.n - 1}.`}
                                                     </p>
                                                 ) : openForm === m.n ? (
                                                     <SubmitForm
@@ -572,15 +574,19 @@ function SubmitForm({
     onSubmit: () => void;
     onCancel: () => void;
 }) {
+    const urlInputId = useId();
     const set = (patch: Partial<FormState>) => setForm({ ...form, ...patch });
 
     return (
         <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-4 space-y-3">
             <div>
-                <label className="block text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
+                <label
+                    htmlFor={urlInputId}
+                    className="block text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
                     {milestone === 3 ? "Link to the issue you filed" : "Link to the pull request"}
                 </label>
                 <input
+                    id={urlInputId}
                     value={form.url}
                     onChange={(e) => set({ url: e.target.value })}
                     placeholder="https://github.com/owner/repo/pull/123"

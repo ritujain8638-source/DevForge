@@ -1,6 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const nodemailer = require('nodemailer');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
+
+// Helper to get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 1. Manually parse .env.local to load SMTP settings
 const envPath = path.join(__dirname, '../.env.local');
@@ -36,8 +41,8 @@ if (!smtpUser || !smtpPass) {
 // Get filter arg (e.g. "shubham", "all")
 const filterArg = process.argv[2] ? process.argv[2].toLowerCase() : null;
 if (!filterArg) {
-    console.log("Usage: node scripts/send-onboarding.js <all | name-filter>");
-    console.log("Example: node scripts/send-onboarding.js shubham");
+    console.log("Usage: node scripts/send-onboarding.mjs <all | name-filter>");
+    console.log("Example: node scripts/send-onboarding.mjs shubham");
     process.exit(0);
 }
 

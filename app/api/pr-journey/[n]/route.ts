@@ -13,6 +13,7 @@ import {
     checkKind,
     checkMilestone10,
     emptyJourney,
+    isMilestoneUnlocked,
     journeyId,
     milestoneExists,
     validateReflection,
@@ -68,11 +69,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
         // page that draws the padlocks. It also runs before the GitHub lookup:
         // a submission that is going to be refused anyway should not spend the
         // shared API budget finding that out.
-        if (n > 1 && record.entries[String(n - 1)]?.state !== "signed-off") {
+        if (!isMilestoneUnlocked(record.entries, n)) {
+            const previous = record.entries[String(n - 1)]?.state;
             return NextResponse.json(
                 {
                     ok: false,
-                    message: `Milestone ${n - 1} has to be signed off before you can submit ${n}. The order is the point.`,
+                    message:
+                        previous === "changes-requested"
+                            ? `Milestone ${n - 1} was sent back. Fix and resubmit it before you submit ${n}.`
+                            : `Submit milestone ${n - 1} before you submit ${n}. The order is the point.`,
                 },
                 { status: 409 },
             );
@@ -116,6 +121,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
         return NextResponse.json({ ok: true, message: "Submitted for sign-off.", entry });
     } catch (error) {
         if (error instanceof EvidenceError) {
+            // The student sees this message; log it too, so a wave of refusals can be told
+            // apart from a bug without asking each student for a screenshot.
+            console.info(`pr-journey: refused ${request.nextUrl.pathname}: ${error.message}`);
             return NextResponse.json({ ok: false, message: error.message }, { status: 422 });
         }
         return authErrorResponse(error);
@@ -177,11 +185,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             changed,
             entry,
             message: changed
-                ? `Now ${fresh.state}, ${fresh.reviewRounds} review rounds.`
+                ? `Now ${fresh.state}, ${fresh.reviewRounds} review ${fresh.reviewRounds === 1 ? "round" : "rounds"}.`
                 : `Still ${fresh.state}. Nothing has moved.`,
         });
     } catch (error) {
         if (error instanceof EvidenceError) {
+            console.info(`pr-journey: re-check refused ${request.nextUrl.pathname}: ${error.message}`);
             return NextResponse.json({ ok: false, message: error.message }, { status: 422 });
         }
         return authErrorResponse(error);
@@ -203,6 +212,13 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
         if (record.entries[String(n)]?.state === "signed-off") {
             return NextResponse.json(
                 { ok: false, message: "Signed-off milestones stay on the record." },
+                { status: 409 },
+            );
+        }
+        // Later milestones stand on this one now that submitting unlocks the next.
+        if (record.entries[String(n + 1)]) {
+            return NextResponse.json(
+                { ok: false, message: `You've already submitted milestone ${n + 1}. Withdraw that one first.` },
                 { status: 409 },
             );
         }

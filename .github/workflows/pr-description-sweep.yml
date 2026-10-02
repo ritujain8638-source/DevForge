@@ -1,0 +1,89 @@
+name: PR description sweep
+
+# Closes pull requests whose description was never filled in.
+#
+# The PR description workflow labels them and says they'll be closed in two
+# days. This is what actually does it — but only after re-checking, so a PR
+# fixed after the warning is never closed.
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List what would be closed, close nothing"
+        type: boolean
+        default: true
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        with:
+          script: |
+            const { checkDescription, buildComment, LABEL, MARKER, GRACE_DAYS } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/check-pr-description.mjs`
+            );
+            const { owner, repo } = context.repo;
+            const dryRun = process.env.DRY_RUN === "true";
+            const graceMs = GRACE_DAYS * 24 * 60 * 60 * 1000;
+
+            const prs = await github.paginate(github.rest.pulls.list, { owner, repo, state: "open", per_page: 100 });
+            const flagged = prs.filter((pr) => pr.labels.some((l) => l.name === LABEL));
+            core.info(`${flagged.length} of ${prs.length} open PRs are labelled ${LABEL}${dryRun ? " (dry run)" : ""}`);
+
+            for (const pr of flagged) {
+              const issue_number = pr.number;
+              const { ok, problems } = checkDescription(pr.body ?? "");
+
+              // Fixed since the warning: clear the label and say so, don't close.
+              if (ok) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number, name: LABEL }).catch(() => {});
+                core.info(`#${issue_number}: fixed, label removed`);
+                continue;
+              }
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number, per_page: 100,
+              });
+              const mine = comments.find((c) => c.user.type === "Bot" && c.body.includes(MARKER));
+              if (!mine) {
+                core.info(`#${issue_number}: no warning comment yet, skipping`);
+                continue;
+              }
+
+              const age = Date.now() - new Date(mine.updated_at).getTime();
+              if (age < graceMs) {
+                core.info(`#${issue_number}: warned ${Math.round(age / 3600000)}h ago, still in grace`);
+                continue;
+              }
+
+              if (dryRun) {
+                core.info(`#${issue_number}: WOULD CLOSE (@${pr.user.login}, ${problems.length} problems)`);
+                continue;
+              }
+
+              await github.rest.issues.createComment({
+                owner, repo, issue_number,
+                body:
+                  `${MARKER}\nClosing this for now, @${pr.user.login} — the description still isn't filled in ` +
+                  `${GRACE_DAYS} days after the note above.\n\n` +
+                  "**Nothing is lost.** Your branch and commits are untouched. Fill in the description " +
+                  "(the ✏️ next to the title), then click **Reopen pull request** below and it carries on as normal.\n\n" +
+                  "If you'd rather hand the issue back so someone else can take it, comment `/unassign` on it.",
+              });
+              await github.rest.pulls.update({ owner, repo, pull_number: issue_number, state: "closed" });
+              core.notice(`Closed #${issue_number} (@${pr.user.login}): description never filled in`);
+            }

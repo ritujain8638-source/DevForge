@@ -27,6 +27,8 @@ npm run dev          # http://localhost:3000
 
 **No secrets needed.** The public pages, the build and the tests all run without any `.env` file. Pages that need the member portal's database (sign-in, dashboard, admin) show an error locally. That's expected, and none of the `good first issue`s need them.
 
+See `.env.example` for the full list of environment variables those pages need.
+
 ## 3. Make the change
 
 ```bash
@@ -49,6 +51,7 @@ npm run build    # type-check + production build
 
 - Title: what changed, e.g. `Navbar logo: use next/image`.
 - Fill in the PR template. Include **`Fixes #<issue>`**, how you tested it, and a screenshot for anything visible.
+- **A bot checks this.** If the description is empty, has `Fixes #` with no number, or says nothing about testing, it comments with what's missing and labels the PR `needs-description`. **A PR left that way for 2 days is closed automatically** — your branch survives, and reopening it after you fix the description carries on as normal.
 - **CI must be green**: the Lint, Test and Type-check & build checks. If one fails, open the log, fix it and push again. Don't ask someone else to re-run it.
 
 ### "Pull request creation failed: must be a collaborator"
@@ -71,4 +74,10 @@ Tests use [Vitest](https://vitest.dev) and live next to the code: `lib/foo.ts` �
 
 ## Deployments
 
-Only `main` deploys to [devforge.club](https://www.devforge.club), via Vercel. Pull requests don't get preview deployments; CI (GitHub Actions) is what checks your PR.
+Only `main` deploys to [devforge.club](https://www.devforge.club). **CI (Lint, Test, Type-check & build) is what checks your PR** — those are the three that have to be green.
+
+You may also see a **Vercel** check:
+
+- On a PR that changes pages or components, it builds a preview so a reviewer can look at your change, and a **screenshot bot** comments with pictures of the pages you touched, on desktop and phone widths. Check them: if your change looks wrong there, it looks wrong in production.
+- On a tests-only, docs-only or script-only PR it is skipped: there's nothing to look at.
+- On a PR from a **fork** it often shows a red ✗ saying *"Authorization required to deploy"*. **Ignore it.** We don't build previews from forks, it doesn't block merging, and it isn't something you did wrong.

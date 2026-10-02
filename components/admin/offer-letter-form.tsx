@@ -16,10 +16,10 @@ const labelClass = "block text-xs uppercase tracking-wider text-neutral-400 mb-2
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
-        <div>
-            <label className={labelClass}>{label}</label>
+        <label className="block">
+            <span className={labelClass}>{label}</span>
             {children}
-        </div>
+        </label>
     );
 }
 

@@ -108,30 +108,31 @@ export function OfferLetterBulk({ defaults }: { defaults: { signatoryName: strin
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={"Aditi Sharma\taditi@example.com\nRahul Verma\trahul@example.com"}
+                aria-label="Recipients"
                 className={`${inputClass} min-h-[200px] font-mono text-xs resize-y`}
             />
 
             <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                    <label className="block text-xs uppercase tracking-wider text-neutral-400 mb-2">Role</label>
+                <label className="block">
+                    <span className="block text-xs uppercase tracking-wider text-neutral-400 mb-2">Role</span>
                     <input className={inputClass} value={role} onChange={(e) => setRole(e.target.value)} />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-wider text-neutral-400 mb-2">Signatory</label>
+                </label>
+                <label className="block">
+                    <span className="block text-xs uppercase tracking-wider text-neutral-400 mb-2">Signatory</span>
                     <input
                         className={inputClass}
                         value={signatoryName}
                         onChange={(e) => setSignatoryName(e.target.value)}
                     />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-wider text-neutral-400 mb-2">Title</label>
+                </label>
+                <label className="block">
+                    <span className="block text-xs uppercase tracking-wider text-neutral-400 mb-2">Title</span>
                     <input
                         className={inputClass}
                         value={signatoryTitle}
                         onChange={(e) => setSignatoryTitle(e.target.value)}
                     />
-                </div>
+                </label>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-xs">

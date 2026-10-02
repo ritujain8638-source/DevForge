@@ -1,0 +1,73 @@
+name: PR description
+
+# Checks that a pull request description is filled in: a `Fixes #<issue>` line,
+# what changed, and how it was tested. Comments with whatever is missing and
+# labels the PR, so the sweep can close the ones nobody comes back to.
+#
+# pull_request_target: this needs to comment on PRs from forks, so it runs with
+# this repo's permissions. It reads the description through the API and checks
+# out only this repo's scripts — never anything from the pull request.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { checkDescription, buildComment, LABEL, MARKER, GRACE_DAYS } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/check-pr-description.mjs`
+            );
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            const issue_number = pr.number;
+
+            const { ok, problems } = checkDescription(pr.body ?? "");
+            core.info(ok ? "Description looks fine." : `Problems: ${problems.length}`);
+
+            const labels = (pr.labels ?? []).map((l) => l.name);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const mine = comments.find((c) => c.user.type === "Bot" && c.body.includes(MARKER));
+
+            if (ok) {
+              if (labels.includes(LABEL)) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number, name: LABEL }).catch(() => {});
+              }
+              // Only say so if we had complained; otherwise stay quiet.
+              if (mine && !mine.body.includes("✅")) {
+                await github.rest.issues.updateComment({
+                  owner, repo, comment_id: mine.id,
+                  body: buildComment({ user: pr.user.login, ok: true }),
+                });
+              }
+              return;
+            }
+
+            const deadline = new Date(Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000);
+            const body = buildComment({ user: pr.user.login, problems, deadline, ok: false });
+
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+
+            if (!labels.includes(LABEL)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [LABEL] });
+            }
